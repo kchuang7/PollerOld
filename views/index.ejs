@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+
+<!-- index.ejs is used for rendering any generic question post page (up to 5 posts per page). This can apply to any community, any page, and any post list. -->
+
+<html>
+
+  <head>
+    <title>Poller - Real-Time Crowdsourcing Polling Platform</title>
+    <meta name="description" content="Poller is a real-time data visualization platform based off of a Reddit-style bulletin board. Users ask the questions they want to see answered and the community votes and answers the best question posts from the community.">
+    <meta name = "viewport" content = "width=device-width, initial-scale=1.0">
+    <!-- Creates custom parent directory redirect string -->
+    <% var staticDirPath = "" %>
+    <% for (z = 0; z < url.split("/").length - 1; z++) { staticDirPath += "../"; } %>
+    <link href='http://fonts.googleapis.com/css?family=Monda' rel='stylesheet' type='text/css'>
+    <link href = "<%= staticDirPath %>stylesheets/css/bootstrap.css" rel = "stylesheet"> <!--change back to bootstrap.min-->
+    <script src = "http://code.jquery.com/jquery-1.10.2.min.js"></script>
+    <script src = "<%= staticDirPath %>socket.io.js"></script>
+    <script src = "<%= staticDirPath %>javascripts/client/client.js"></script>
+    <script src = "<%= staticDirPath %>javascripts/js/bootstrap.js"></script>
+    <!--<script src = "<%= staticDirPath %>javascripts/highcharts.js"></script>-->
+    <script src = "//cdnjs.cloudflare.com/ajax/libs/highcharts/4.0.3/highcharts.js"></script>
+    <script src = "//cdnjs.cloudflare.com/ajax/libs/highcharts/4.0.3/highcharts-more.js"></script>
+
+    <meta charset="utf-8">
+    <style>
+      <% for (i = 1; i < usernames.length+1; i++) { %>
+        #map-canvas<%=i%> {
+          margin: 0;
+          padding: 0;
+          width: 500px;
+          height: 300px;
+        }
+      <% } %>
+    </style>
+    <!-- <script src = "https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script> -->
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&libraries=visualization&sensor=false"></script>
+
+    <script>
+      this.community = "<%= community %>";
+      <% for (i = 1; i < usernames.length+1; i++) { %>
+        var map<%=i%>, heatmap<%=i%>;
+        var locations = <%= JSON.stringify(locations[i-1]) %>;
+        var locationData<%=i%> = [];
+
+        for (x = 0; x < locations.length; x+=2)
+          locationData<%=i%>.push(new google.maps.LatLng(locations[x], locations[x+1]));
+
+        function initialize<%=i%>() {
+          var mapOptions = {
+            zoom: 3,
+            center: new google.maps.LatLng(39.0997, -94.5786),
+            mapTypeId: google.maps.MapTypeId.HYBRID
+          };
+          map<%=i%> = new google.maps.Map(document.getElementById('map-canvas<%=i%>'), mapOptions);
+
+          this.pointArray<%=i%> = new google.maps.MVCArray(locationData<%=i%>);
+
+          heatmap<%=i%> = new google.maps.visualization.HeatmapLayer({
+            data: pointArray<%=i%>
+          });
+
+          heatmap<%=i%>.setOptions({
+            dissipating: true,
+            maxIntensity: 10,
+            radius: 10,
+            opacity: 0.85
+          });
+
+          map<%=i%>.setOptions({
+            maxZoom: 10
+          });
+
+          heatmap<%=i%>.setMap(map<%=i%>);
+        }
+
+        function toggleHeatmap() {
+          heatmap<%=i%>.setMap(heatmap<%=i%>.getMap() ? null : map<%=i%>);
+        }
+
+        function changeGradient() {
+          var gradient = [
+            'rgba(0, 255, 255, 0)',
+            'rgba(0, 255, 255, 1)',
+            'rgba(0, 191, 255, 1)',
+            'rgba(0, 127, 255, 1)',
+            'rgba(0, 63, 255, 1)',
+            'rgba(0, 0, 255, 1)',
+            'rgba(0, 0, 223, 1)',
+            'rgba(0, 0, 191, 1)',
+            'rgba(0, 0, 159, 1)',
+            'rgba(0, 0, 127, 1)',
+            'rgba(63, 0, 91, 1)',
+            'rgba(127, 0, 63, 1)',
+            'rgba(191, 0, 31, 1)',
+            'rgba(255, 0, 0, 1)'
+          ]
+          heatmap<%=i%>.set('gradient', heatmap<%=i%>.get('gradient') ? null : gradient);
+        } 
+
+        function changeRadius() {
+          heatmap<%=i%>.set('radius', heatmap<%=i%>.get('radius') ? null : 20);
+        }
+
+        function changeOpacity() {
+          heatmap<%=i%>.set('opacity', heatmap<%=i%>.get('opacity') ? null : 0.2);
+        }
+
+        google.maps.event.addDomListener(window, 'load', initialize<%=i%>);
+      <% } %>
+    </script> 
+
+  </head>
+	
+  <body>
+          
+    <!-- Navigation Bar -->
+    <div class = "navbar navbar-default navbar-static-top" role = "navigation">
+      <div class = "container">
+        <div class="navbar-inner">
+          <a href = "/" class = "navbar-brand"><img src="<%= staticDirPath %>images/rsz_poller_logo_temp.png" style="margin-top: -12px; margin-bottom: -15px" align="left"></img></a>
+        </div>
+        <button class = "navbar-toggle" data-toggle = "collapse" data-target = ".navHeaderCollapse">
+          <span class = "icon-bar"></span> <span class = "icon-bar"></span> <span class = "icon-bar"></span>
+        </button>
+				
+	<div class = "collapse navbar-collapse navHeaderCollapse">
+	  <ul class = "nav nav-tabs navbar-nav navbar-left">
+            <% if (community == 'Main') { %>
+              <% if (list == 'hotlist') { %>
+	        <li class = "active"><a>Hot</a></li>
+	        <li><a href = "/new">New</a></li>
+	        <li><a href = "/top">Top</a></li>
+              <% } else if (list == 'newlist') { %>
+                <li><a href = "/">Hot</a></li>
+	        <li class = "active"><a>New</a></li>
+	        <li><a href = "/top">Top</a></li>
+              <% } else if (list == 'toplist') { %>
+                <li><a href = "/">Hot</a></li>
+	        <li><a href = "/new">New</a></li>
+	        <li class = "active"><a>Top</a></li>
+              <% } %>
+            <% } else { %>
+              <% if (list == 'hotlist') { %>
+	        <li class = "active"><a>Hot</a></li>
+	        <li><a href = "/c/<%= community %>/new">New</a></li>
+	        <li><a href = "/c/<%= community %>/top">Top</a></li>
+              <% } else if (list == 'newlist') { %>
+                <li><a href = "/c/<%= community %>">Hot</a></li>
+	        <li class = "active"><a>New</a></li>
+	        <li><a href = "/c/<%= community %>/top">Top</a></li>
+              <% } else if (list == 'toplist') { %>
+                <li><a href = "/c/<%= community %>/">Hot</a></li>
+	        <li><a href = "/c/<%= community %>/new">New</a></li>
+	        <li class = "active"><a>Top</a></li>
+              <% } %>
+            <% } %>
+            <li class = "dropdown">
+              <a href = "#" class = "dropdown-toggle" data-toggle = "dropdown">Communities <b class = "caret"></b></a>
+              <ul class = "dropdown-menu">
+                <li>
+                  <a href = "/">Main</a>
+                  <% for (c = 0; c < communityList.length; c++) { %>
+                    <a href = "/c/<%= communityList[c] %>"><%= communityList[c] %></a>
+                  <% } %>
+                  <a href = "#">See more...</a>
+                  <a href = "#">Create community</a>
+                </li>
+              </ul>
+            </li>
+            <li><a href = "/about">About</a></li>
+	  </ul>
+                    
+          <ul class = "nav navbar-nav">
+	    <p class="navbar-text"><b style="color: #241abf"><%= community %></b> <b style="color: Black">Community</b></p>
+	  </ul>
+                
+          <ul class = "nav navbar-nav">
+            <% if (community != 'Main') { %>
+	      <a id="askBtn"><button type="button" class="btn btn-danger navbar-btn">Ask!</button></a>
+            <% } %>
+	  </ul>
+                   
+	  <div class = "col-sm-3 col-md-2 navbar-right">
+	    <form class="navbar-form navbar-right" role = "search" name = "srch-term" id = "srch-term">
+	      <div class = "input-group">
+	        <input type = "text" class = "form-control" placeholder = "Search">
+	        <div class="input-group-btn">
+	          <button class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>
+	        </div>
+	      </div>
+	    </form>
+	  </div>
+          
+          <% if (!loggedIn) { %>
+	    <ul class = "nav navbar-nav navbar-right">
+	      <a href="/login"><button type="button" class="btn btn-default navbar-btn">Login</button></a>
+            </ul>
+          <% } else { %>
+            <ul class = "nav navbar-nav navbar-right">
+	      <a href="/logout"><button type="button" class="btn btn-default navbar-btn" style="margin-right: -15px">Logout</button></a>
+            </ul>
+            <ul class = "nav navbar-nav navbar-right">
+              <p class="navbar-text">Welcome <a href="/profile/<%= username %>"><b><%= username %></b></a>!&nbsp;&nbsp;&nbsp;</p>
+            </ul>
+          <% } %>
+
+        </div>
+      </div>
+    </div>
+    
+    <!-- Dialog Modals -->
+    <style>
+      .modal {
+        overflow-y: auto;
+        }
+      .modal-open {
+        overflow: auto;
+        }
+      .modal-dialog {
+        margin: auto;
+        position: absolute;
+        top: 200px; left: 0; bottom: 0; right: 0;
+        }
+    </style>
+    
+    <!-- Must be logged in to upvote/downvote modal -->
+    <div class="modal fade bs-example-modal-sm absolute-center" id = "notLoggedInPostVote" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content" style = "text-align: center">
+          <h6><i>Click outside to dismiss!</i></h6>
+          <button type="button" class="close pull-right" data-dismiss="modal" aria-hidden="true" style="margin-top: -25px; margin-right: 14px">×</button>
+          <h4><b>You must be logged in to upvote or downvote posts!</b></h4>
+          <a href="/login"><button type="button" class="btn" style="background-color: #00BFFF; color: White"><b>Login</b></button></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="/signup"><button type="button" class="btn" style="background-color: #32CD32; color: White"><b>Sign-up</b></button></a>
+          <br></br>
+        </div>
+      </div>
+    </div>
+
+    <!-- Must be logged in to answer modal -->
+    <div class="modal fade bs-example-modal-sm absolute-center" id = "notLoggedInAnswerVote" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content" style = "text-align: center">
+          <h6><i>Click outside to dismiss!</i></h6>
+          <button type="button" class="close pull-right" data-dismiss="modal" aria-hidden="true" style="margin-top: -25px; margin-right: 14px">×</button>
+          <h4><b>You must be logged in to answer question posts!</b></h4>
+          <a href="/login"><button type="button" class="btn" style="background-color: #00BFFF; color: White"><b>Login</b></button></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="/signup"><button type="button" class="btn" style="background-color: #32CD32; color: White"><b>Sign-up</b></button></a>
+          <br></br>
+        </div>
+      </div>
+    </div>
+
+    <!-- Must be logged in to ask modal -->
+    <div class="modal fade bs-example-modal-sm absolute-center" id = "notLoggedInAsk" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content" style = "text-align: center">
+          <h6><i>Click outside to dismiss!</i></h6>
+          <button type="button" class="close pull-right" data-dismiss="modal" aria-hidden="true" style="margin-top: -25px; margin-right: 14px">×</button>
+          <h4><b>You must be logged in to ask questions!</b></h4>
+          <a href="/login"><button type="button" class="btn" style="background-color: #00BFFF; color: White"><b>Login</b></button></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="/signup"><button type="button" class="btn" style="background-color: #32CD32; color: White"><b>Sign-up</b></button></a>
+          <br></br>
+        </div>
+      </div>
+    </div>
+
+    <% if (loggedIn) { %>
+    <!-- Answer Modal -->
+    <div class="modal fade bs-example-modal-sm absolute-center" id = "answerModal" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-sm" style="top: 75px">
+        <div class="modal-content" style = "text-align: center">
+          <div class="modal-header">
+            <h4><b>Answer Demographics Selection</b></h4>
+            <button type="button" class="close pull-right" data-dismiss="modal" aria-hidden="true" style="margin-top: -30px"><span class="glyphicon glyphicon-remove"></span></button>
+          </div>
+          <div class="modal-body" style="margin-bottom: -38px">
+            <h4>Select all demographic information you want to include!</h4>
+            <hr>
+            <div class="demographicsModal">
+              <% if (gender == "Unidentified" && age == "Unidentified" && education == "Unidentified" && income == "Unidentified") { %>
+                <h5><b>You don't have any demographic information filled out.<h6></h6>Visit your profile page at <a href="/profile/<%= username %>"><%= username %></a> to fill it out!</b><br><br></h5>
+              <% } else { %>
+                <% if (gender == "Unidentified" || age == "Unidentified" || education == "Unidentified" || income == "Unidentified") { %>
+                  <h5><b>You don't have some demographic information filled out.<h6></h6>Visit your profile page at <a href="/profile/<%= username %>"><%= username %></a> to fill it out!</b><br><br></h5>
+                <% } if (gender != "Unidentified") { %>
+                  <h4><label style="font-weight: normal">Include my gender &nbsp;&nbsp;<input type="checkbox" name="demographicGen"></label><h4>
+                <% } if (age != "Unidentified") { %>
+                  <h4><label style="font-weight: normal">Include my age &nbsp;&nbsp;<input type="checkbox" name="demographicAge"></label><h4>
+                <% } if (education != "Unidentified") { %>
+                  <h4><label style="font-weight: normal">Include my education level &nbsp;&nbsp;<input type="checkbox" name="demographicEdu"></label><h4>
+                <% } if (income != "Unidentified") { %>
+                  <h4><label style="font-weight: normal">Include my income category &nbsp;&nbsp;<input type="checkbox" name="demographicInc"></label><h4>
+                <% } %>
+              <% } %>
+              <!-- Popover content -->
+              <div id="popover_content_wrapper_loc" style="display: none">
+                <h5>We perform a simple geolocation based on your IP address and determine the closest city associated with your IP. The coordinates of that city are then added to the heatmap. <br> While your approximate location is good enough for visualization purposes on a large country/global scale, <b>the coordinates are by no means accurate enough to determine your exact location.</b> <br> <i>Zoom capabilities are also restricted.</i></h5>
+              </div>
+              <h4><label style="font-weight: normal">Include my location (only for heatmap) <span id="locHelp" class="glyphicon glyphicon-question-sign" data-html="true" data-original-title="" data-content="" rel="popover" data-placement="left" data-trigger="hover" style="cursor: pointer"></span>&nbsp;&nbsp;<input type="checkbox" name="demographicLoc"></label><h4>
+              <script>
+                // initialize education help popover
+                $('#locHelp').popover({ 
+                  html : true,
+                  content: function() { return $('#popover_content_wrapper_loc').html(); }
+                });
+              </script>
+            </div>
+            <h6><br>Only checked demographic information will be included with your answer vote submission, though you remain <i>anonymous</i> either way (no account association)!</h6>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="includeAll" class="btn pull-left" style="background-color: #00BFFF; color: White">Include All</button>
+            <button type="button" id="resetAll" class="btn btn-link pull-left"">Reset</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>&nbsp;&nbsp;&nbsp;<a style = "cursor: pointer"><button id="submitID" type="button" class="btn btn-primary submitAnswer" data-dismiss="modal"><b>Submit Answer Vote</b></button></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end Answer Modal -->
+    <% } %>
+    
+    <style>
+      .popover-title {
+        background: black;
+        color: white;
+        }
+      .popover-content {
+        color: black;
+        }
+      .popover.left .arrow:after {
+        border-left-color: white;
+        }
+    </style>
+
+    <!-- Post Loop (i is the post index 0-4) -->
+    <% for (i = 0; i < usernames.length; i++) { %>
+      <div class = "container">
+        <div>
+          <!-- Voting module -->
+          <div class = "span6" style = "display: inline-block; float: left">
+            <% if (upvotedArray[i]) { %>
+              <div id = "upvote<%= i+1 %>" class = "upvote" data-toggle="tooltip" data-placement="right" data-original-title="Already upvoted!" style = "text-align: center"><a style = "" id = "upvotelink<%= i+1 %>"><img src = "<%= staticDirPath %>images/glyphicons_213_up_arrow_orange.png" id = "upvoteimg<%= i+1 %>"></img></a></div>
+            <% } else { %>
+              <div id = "upvote<%= i+1 %>" class = "upvote" data-toggle="tooltip" data-placement="right" data-original-title="" style = "text-align: center"><a style = "cursor: pointer" id = "upvotelink<%= i+1 %>"><img src = "<%= staticDirPath %>images/glyphicons_free/glyphicons/png/glyphicons_213_up_arrow.png" id = "upvoteimg<%= i+1 %>"></img></a></div>
+            <% } var approvalPercent = (upvotes[i]/(upvotes[i]+downvotes[i])*100).toFixed(2); %>
+            <!-- Popover content -->
+            <div id="popover_content_wrapper<%= i+1 %>" style="display: none">
+              <b style="color: green" id="popoverUpvote<%= i+1 %>"><%= upvotes[i] %></b> upvotes
+              <h6></h6>
+              <b style="color: red" id="popoverDownvote<%= i+1 %>"><%= downvotes[i] %></b> downvotes
+            </div>
+            <!-- end Popover content -->
+            <div style = "text-align: center"><h4 style = "display: inline-block">&nbsp;</h4><h4 data-html="true" data-original-title="<b><%= approvalPercent %></b>% liked" data-content="" rel="popover" data-placement="right" data-trigger="hover" style = "display: inline" id = "score<%= i+1 %>"><%= scores[i] %></h4><h4 style = "display: inline">&nbsp;</h4></div>
+            <% if (downvotedArray[i]) { %>
+              <div id = "downvote<%= i+1 %>" class = "downvote" data-toggle="tooltip" data-placement="right" data-original-title="Already downvoted!" style = "text-align: center"><h5 style = "display: inline;">&nbsp;&nbsp;</h5><a style = "" id = "downvotelink<%= i+1 %>"><img src = "<%= staticDirPath %>images/glyphicons_212_down_arrow_orange.png" id = "downvoteimg<%= i+1 %>"></img></a><h5 style = "display: inline;">&nbsp;&nbsp;</h5></div>
+            <% } else { %>
+               <div id = "downvote<%= i+1 %>" class = "downvote" data-toggle="tooltip" data-placement="right" data-original-title="" style = "text-align: center"><h5 style = "display: inline;">&nbsp;&nbsp;</h5><a style = "cursor: pointer" id = "downvotelink<%= i+1 %>"><img src = "<%= staticDirPath %>images/glyphicons_free/glyphicons/png/glyphicons_212_down_arrow.png" id = "downvoteimg<%= i+1 %>"></img></a><h5 style = "display: inline;">&nbsp;&nbsp;</h5></div>
+            <% } %>
+            <script>
+              // initialize all upvote/downvote popovers
+              $('#score' + <%=i+1%>).popover({ 
+                html : true,
+                content: function() { return $('#popover_content_wrapper' + <%=i+1%>).html(); }
+              });
+            </script>
+          </div>
+          <div>
+            <% var parsedQ = questions[i].toLowerCase().replace(/\ /g, '-').replace(/\?/g, '').replace(/\//g, ''); %>
+            <h4 class = "list-group-item-heading">&nbsp;<b>Q:</b><a href = "/post/<%= shortId[i] %>/<%= parsedQ %>" style = "color: Black"> <%= questions[i] %></a> 
+            <% if (questionsAnsweredArray[i]) { %>
+              <button id="alreadyAnswered<%= i+1 %>" data-toggle="tooltip" data-placement="left" data-original-title="Already answered!" rel="popover" data-trigger="hover" type="button" class="btn alreadyAnswered pull-right" style="background-color: #477447; color: White">Answer</button>
+            <% } else { %>
+              <button id="answer<%= i+1 %>" data-toggle="tooltip" data-placement="left" data-original-title="" type="button" class="btn btn-success answer pull-right">Answer</button>
+            <% } %>
+            </h4>
+            <h4>&nbsp;<i class="glyphicon glyphicon-arrow-right" style = "color: #00BFFF"></i>
+	      <!-- Answer button group -->
+              <div class="btn-group" data-toggle="buttons">
+  	      <% for (j = 0; j < answerChoices[i].length; j++) { %>
+                <label id="answer<%= i+1 %><%= j+1 %>" class="btn answerChoice" style="background-color: <%= ansColors[j] %>; color: White">
+	          <input type="radio"><b><%= letters[j] %>.</b> <%= answerChoices[i][j] %></input>
+                </label>
+	      <% } %>
+              <label id="showAll<%= i+1 %>" class="btn btn-primary active showAll">
+	        <input type="radio" style="background-color: Gray; color: White"><b>Show All</b></input>
+              </label>
+              </div>
+	    </h4>
+          </div>
+        </div>
+		
+        <% /*count num answer votes*/ var total=0; for (j=0;j<answerVotes[i].length;j++) total+=answerVotes[i][j]; %>
+		
+        <div class = "progress row-fluid">
+          <% for (j = 0; j < answerVotes[i].length; j++) { %>
+            <div id="progress<%= i+1 %><%= j+1 %>" class="progress-bar" style="width: <%= 100*answerVotes[i][j]/total %>%; background-color: <%= ansColors[j] %>">
+              <span id="progressContent<%= i+1 %><%= j+1 %>"><b><%= letters[j] %>.</b> <%= answerVotes[i][j] %> (<%= (100*answerVotes[i][j]/total).toFixed(2) %>%)</span>
+            </div>
+          <% } %>
+        </div>
+        
+        <!-- heatmap and demographics highchart containers -->
+        <div id = "map-canvas<%= i+1 %>" style = "float: right"></div>
+        <div class = "container">
+          <div id = "dem-chart<%= i+1 %>" style="width: 620px; height: 300px; margin: 5; float: left"></div>
+        </div>
+        
+        <h6></h6>
+        <a href = "/post/<%= shortId[i] %>/<%= parsedQ %>" style="margin-left: 20px; margin-top: 20px"><%= numComments[i] %> comments</a> - <a href="/post/<%= shortId[i] %>/<%= parsedQ %>"; style="cursor: pointer">share</a> - asked by <a href = "/profile/<%= usernames[i] %>"><%= usernames[i] %></a>
+        <% if (created[i] < 60) { %>
+          <%= Math.floor(created[i]) %> second(s) ago
+        <% } else if (created[i] < 3600) { %>
+          <%= Math.floor(created[i]/60) %> minute(s) ago
+        <% } else if (created[i] < 86400) { %>
+          <%= Math.floor(created[i]/3600) %> hour(s) ago
+        <% } else if (created[i] < 2.62974e6) { %>
+          <%= Math.floor(created[i]/86400) %> day(s) ago
+        <% } else if (created[i] < 3.15569e7) { %>
+          <%= Math.floor(created[i]/2.62974e6) %> month(s) ago
+        <% } else { %>
+          <%= Math.floor(created[i]/3.15569e7) %> year(s) ago
+        <% } %>
+        <br></br>
+        
+        <script>
+$('#share' + <%=i+1%>).on('show.bs.popover', function () {
+ stWidget.addEntry({
+	"service":"sharethis",
+	"element":document.getElementById("sharePopover<%= i+1 %>"),
+	"url":"http://sharethis.com",
+	"title":"sharethis",
+	"type":"large",
+	"text":"ShareThis" ,
+	"image":"http://www.softicons.com/download/internet-icons/social-superheros-icons-by-iconshock/png/256/sharethis_hulk.png",
+	"summary":"this is description1"   
+})
+$.getScript("http://w.sharethis.com/button/buttons.js", function() {});
+stButtons.locateElements();
+})
+        </script>
+
+      </div>
+    <% } %>
+    
+    <div class = "container">
+      <ul class = "pagination">
+        <% if (community == 'Main') { %>
+          <% if (list == 'hotlist') { %>
+            <% if (page == 1) { %>
+              <li class = "disabled"><a>&laquo;</a></li>
+            <% } else { %>
+              <li><a href = "/<%= page-1 %>">&laquo;</a></li>
+            <% } %>
+            <li class = "active"><a><%= page %><span class="sr-only">(current)</span></a></li>
+            <% if (morePages) { %>
+              <li><a href = "/<%= page+1 %>">&raquo;</a></li>
+            <% } else { %>
+              <li class = "disabled"><a>&raquo;</a></li>
+            <% } %>
+          <% } else if (list == 'newlist') { %>
+            <% if (page == 1) { %>
+              <li class = "disabled"><a>&laquo;</a></li>
+            <% } else { %>
+              <li><a href = "/new/<%= page-1 %>">&laquo;</a></li>
+            <% } %>
+            <li class = "active"><a><%= page %><span class="sr-only">(current)</span></a></li>
+            <% if (morePages) { %>
+              <li><a href = "/new/<%= page+1 %>">&raquo;</a></li>
+            <% } else { %>
+              <li class = "disabled"><a>&raquo;</a></li>
+            <% } %>
+          <% } else if (list == 'toplist') { %>
+            <% if (page == 1) { %>
+              <li class = "disabled"><a>&laquo;</a></li>
+            <% } else { %>
+              <li><a href = "/top/<%= page-1 %>">&laquo;</a></li>
+            <% } %>
+            <li class = "active"><a><%= page %><span class="sr-only">(current)</span></a></li>
+            <% if (morePages) { %>
+              <li><a href = "/top/<%= page+1 %>">&raquo;</a></li>
+            <% } else { %>
+              <li class = "disabled"><a>&raquo;</a></li>
+            <% } %>
+          <% } %>
+        <% } else { %>
+          <% if (list == 'hotlist') { %>
+            <% if (page == 1) { %>
+              <li class = "disabled"><a>&laquo;</a></li>
+            <% } else { %>
+              <li><a href = "/c/<%= community %>/<%= page-1 %>">&laquo;</a></li>
+            <% } %>
+            <li class = "active"><a><%= page %><span class="sr-only">(current)</span></a></li>
+            <% if (morePages) { %>
+              <li><a href = "/c/<%= community %>/<%= page+1 %>">&raquo;</a></li>
+            <% } else { %>
+              <li class = "disabled"><a>&raquo;</a></li>
+            <% } %>
+          <% } else if (list == 'newlist') { %>
+            <% if (page == 1) { %>
+              <li class = "disabled"><a>&laquo;</a></li>
+            <% } else { %>
+              <li><a href = "/c/<%= community %>/new/<%= page-1 %>">&laquo;</a></li>
+            <% } %>
+            <li class = "active"><a><%= page %><span class="sr-only">(current)</span></a></li>
+            <% if (morePages) { %>
+              <li><a href = "/c/<%= community %>/new/<%= page+1 %>">&raquo;</a></li>
+            <% } else { %>
+              <li class = "disabled"><a>&raquo;</a></li>
+            <% } %>
+          <% } else if (list == 'toplist') { %>
+            <% if (page == 1) { %>
+              <li class = "disabled"><a>&laquo;</a></li>
+            <% } else { %>
+              <li><a href = "/c/<%= community %>/top/<%= page-1 %>">&laquo;</a></li>
+            <% } %>
+            <li class = "active"><a><%= page %><span class="sr-only">(current)</span></a></li>
+            <% if (morePages) { %>
+              <li><a href = "/c/<%= community %>/top/<%= page+1 %>">&raquo;</a></li>
+            <% } else { %>
+              <li class = "disabled"><a>&raquo;</a></li>
+            <% } %>
+          <% } %>
+        <% } %>
+      </ul>
+    </div>
+
+    <div class = "navbar navbar-default navbar-static-bottom">
+      <div class = "container">
+        <p class = "navbar-text">Poller</p>
+      </div>
+    </div>
+
+  </body>
+
+</html>

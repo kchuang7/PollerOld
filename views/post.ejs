@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+
+<!-- post.ejs is used for rendering any generic question post. -->
+
+<html>
+
+  <head>
+    <title><%= question %> - Poller</title>
+    <meta name="description" content=""><!-- TODO -->
+    <meta name = "viewport" content = "width=device-width, initial-scale=1.0">
+    <!-- Creates custom parent directory redirect string -->
+    <% var staticDirPath = "" %>
+    <% for (z = 0; z < url.split("/").length - 1; z++) { staticDirPath += "../"; } %>
+    <link href='http://fonts.googleapis.com/css?family=Monda' rel='stylesheet' type='text/css'>
+    <link href = "<%= staticDirPath %>stylesheets/css/bootstrap.css" rel = "stylesheet"> <!--change back to bootstrap.min-->
+    <script src = "http://code.jquery.com/jquery-1.10.2.min.js"></script>
+    <script src = "<%= staticDirPath %>socket.io.js"></script>
+
+    <!-- Make demographic data available globally by extracting data out of EJS variables -->
+    <script>
+      this.url = "<%= url %>";
+      this.postid = "<%= id %>";
+      this.community = "<%= community %>";
+      this.letters = <%- JSON.stringify(letters) %>;
+      this.answerChoices = <%- JSON.stringify(answerChoices) %>;
+      this.answerVotes = <%- JSON.stringify(answerVotes) %>;
+      this.genderUnidentified = <%- JSON.stringify(genderUnidentified) %>;
+      this.genderMale = <%- JSON.stringify(genderMale) %>;
+      this.genderFemale = <%- JSON.stringify(genderFemale) %>;
+      this.ageUnidentified = <%- JSON.stringify(ageUnidentified) %>;
+      this.age_40 = <%- JSON.stringify(age_40) %>;
+      this.age_35_39 = <%- JSON.stringify(age_35_39) %>;
+      this.age_30_34 = <%- JSON.stringify(age_30_34) %>;
+      this.age_26_29 = <%- JSON.stringify(age_26_29) %>;
+      this.age_22_25 = <%- JSON.stringify(age_22_25) %>;
+      this.age_19_21 = <%- JSON.stringify(age_19_21) %>;
+      this.age_15_18 = <%- JSON.stringify(age_15_18) %>;
+      this.age_13_14 = <%- JSON.stringify(age_13_14) %>;
+      this.eduUnidentified = <%- JSON.stringify(eduUnidentified) %>;
+      this.eduPostgrad = <%- JSON.stringify(eduPostgrad) %>;
+      this.eduMaster = <%- JSON.stringify(eduMaster) %>;
+      this.eduBachelor = <%- JSON.stringify(eduBachelor) %>;
+      this.eduAssociate = <%- JSON.stringify(eduAssociate) %>;
+      this.eduHS = <%- JSON.stringify(eduHS) %>;
+      this.eduMS = <%- JSON.stringify(eduMS) %>;
+      this.incomeUnidentified = <%- JSON.stringify(incomeUnidentified) %>;
+      this.incomeUpper = <%- JSON.stringify(incomeUpper) %>;
+      this.incomeUpperMiddle2 = <%- JSON.stringify(incomeUpperMiddle2) %>;
+      this.incomeUpperMiddle1 = <%- JSON.stringify(incomeUpperMiddle1) %>;
+      this.incomeMiddleMiddle = <%- JSON.stringify(incomeMiddleMiddle) %>;
+      this.incomeLowerMiddle = <%- JSON.stringify(incomeLowerMiddle) %>;
+      this.countries = <%- JSON.stringify(countries) %>;
+      this.numCountries = <%- JSON.stringify(numCountries) %>;
+      this.locations = <%- JSON.stringify(locations) %>;
+    </script>
+
+    <script src = "<%= staticDirPath %>javascripts/client/clientPost.js"></script>
+    <script src = "<%= staticDirPath %>javascripts/js/bootstrap.js"></script>
+    <!--<script src = "<%= staticDirPath %>javascripts/highcharts.js"></script>-->
+    <script src = "//cdnjs.cloudflare.com/ajax/libs/highcharts/4.0.3/highcharts.js"></script>
+    <script src = "//cdnjs.cloudflare.com/ajax/libs/highcharts/4.0.3/highcharts-more.js"></script>
+    <!-- ShareThis -->
+    <script type="text/javascript">var switchTo5x=true;</script>
+    <script type="text/javascript" src="http://w.sharethis.com/button/buttons.js"></script>
+    <script type="text/javascript">stLight.options({publisher: "8933073f-2bf5-4d69-ac84-841fe7e58368", doNotHash: false, doNotCopy: false, hashAddressBar: false});</script>
+
+    <meta charset="utf-8">
+    <!-- <script src = "https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script> -->
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&libraries=visualization&sensor=false"></script>
+
+    <script>
+      var map, heatmap;
+      var locationsShowAll = <%= JSON.stringify(locations[genderUnidentified.length-1]) %>; // genderUnidentified.length-1 is the number of answer choices or the "Show All" index
+      var locationData = [];
+
+      for (x = 0; x < locationsShowAll.length; x++)
+        locationData.push(new google.maps.LatLng(locationsShowAll[x][0], locationsShowAll[x][1]));
+
+      function initialize() {
+        var mapOptions = {
+          zoom: 3,
+          center: new google.maps.LatLng(39.0997, -94.5786),
+          mapTypeId: google.maps.MapTypeId.HYBRID
+        };
+        map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
+
+        this.pointArray = new google.maps.MVCArray(locationData);
+
+        heatmap = new google.maps.visualization.HeatmapLayer({
+          data: pointArray
+        });
+
+        heatmap.setOptions({
+          dissipating: true,
+          maxIntensity: 10,
+          radius: 10,
+          opacity: 0.85
+        });
+
+        map.setOptions({
+          maxZoom: 10
+        });
+
+        heatmap.setMap(map);
+      }
+
+      function toggleHeatmap() {
+        heatmap.setMap(heatmap.getMap() ? null : map);
+      }
+
+      function changeGradient() {
+        var gradient = [
+          'rgba(0, 255, 255, 0)',
+          'rgba(0, 255, 255, 1)',
+          'rgba(0, 191, 255, 1)',
+          'rgba(0, 127, 255, 1)',
+          'rgba(0, 63, 255, 1)',
+          'rgba(0, 0, 255, 1)',
+          'rgba(0, 0, 223, 1)',
+          'rgba(0, 0, 191, 1)',
+          'rgba(0, 0, 159, 1)',
+          'rgba(0, 0, 127, 1)',
+          'rgba(63, 0, 91, 1)',
+          'rgba(127, 0, 63, 1)',
+          'rgba(191, 0, 31, 1)',
+          'rgba(255, 0, 0, 1)'
+        ]
+        heatmap.set('gradient', heatmap.get('gradient') ? null : gradient);
+      } 
+
+      function changeRadius() {
+        heatmap.set('radius', heatmap.get('radius') ? null : 20);
+      }
+
+      function changeOpacity() {
+        heatmap.set('opacity', heatmap.get('opacity') ? null : 0.2);
+      }
+
+      google.maps.event.addDomListener(window, 'load', initialize);
+    </script>
+
+  </head>
+
+  <body>
+  
+    <!-- Navigation Bar -->
+    <div class = "navbar navbar-default navbar-static-top" role = "navigation">
+      <div class = "container">
+        <div class="navbar-inner">
+          <a href = "/" class = "navbar-brand"><img src="<%= staticDirPath %>images/rsz_poller_logo_temp.png" style="margin-top: -12px; margin-bottom: -15px" align="left"></img></a>
+        </div>
+        <button class = "navbar-toggle" data-toggle = "collapse" data-target = ".navHeaderCollapse">
+          <span class = "icon-bar"></span> <span class = "icon-bar"></span> <span class = "icon-bar"></span>
+        </button>
+				
+	<div class = "collapse navbar-collapse navHeaderCollapse">
+	  <ul class = "nav nav-tabs navbar-nav navbar-left">
+	    <li><a href = "/c/<%= community %>/">Hot</a></li>
+	    <li><a href = "/c/<%= community %>/new">New</a></li>
+	    <li><a href = "/c/<%= community %>/top">Top</a></li>
+            <li class = "dropdown">
+              <a href = "#" class = "dropdown-toggle" data-toggle = "dropdown">Communities <b class = "caret"></b></a>
+              <ul class = "dropdown-menu">
+                <li>
+                  <a href = "/">Main</a>
+                  <% for (c = 0; c < communityList.length; c++) { %>
+                    <a href = "/c/<%= communityList[c] %>"><%= communityList[c] %></a>
+                  <% } %>
+                  <a href = "#">See more...</a>
+                  <a href = "#">Create community</a>
+                </li>
+              </ul>
+            </li>
+            <li><a href = "/about">About</a></li>
+	  </ul>
+                    
+          <ul class = "nav navbar-nav">
+	    <p class="navbar-text"><b style="color: #241abf"><%= community %></b> <b style="color: Black">Community</b></p>
+	  </ul>
+                
+          <ul class = "nav navbar-nav">
+	    <a id="askBtn"><button type="button" class="btn btn-danger navbar-btn">Ask!</button></a>
+	  </ul>
+                   
+	  <div class = "col-sm-3 col-md-2 navbar-right">
+	    <form class="navbar-form navbar-right" role = "search" name = "srch-term" id = "srch-term">
+	      <div class = "input-group">
+	        <input type = "text" class = "form-control" placeholder = "Search">
+	        <div class="input-group-btn">
+	          <button class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>
+	        </div>
+	      </div>
+	    </form>
+	  </div>
+          
+          <% if (!loggedIn) { %>
+	    <ul class = "nav navbar-nav navbar-right">
+	      <a href="/login"><button type="button" class="btn btn-default navbar-btn">Login</button></a>
+            </ul>
+          <% } else { %>
+            <ul class = "nav navbar-nav navbar-right">
+	      <a href="/logout"><button type="button" class="btn btn-default navbar-btn" style="margin-right: -15px">Logout</button></a>
+            </ul>
+            <ul class = "nav navbar-nav navbar-right">
+              <p class="navbar-text">Welcome <a href="/profile/<%= username %>"><b><%= username %></b></a>!&nbsp;&nbsp;&nbsp;</p>
+            </ul>
+          <% } %>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Dialog Modals -->
+    <style>
+      .modal {
+        overflow-y: auto;
+        }
+      .modal-open {
+        overflow: auto;
+        }
+      .modal-dialog {
+        margin: auto;
+        position: absolute;
+        top: 200px; left: 0; bottom: 0; right: 0;
+        }
+    </style>
+    
+    <!-- Must be logged in to upvote/downvote modal -->
+    <div class="modal fade bs-example-modal-sm absolute-center" id = "notLoggedInPostVote" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content" style = "text-align: center">
+          <h6><i>Click outside to dismiss!</i></h6>
+          <button type="button" class="close pull-right" data-dismiss="modal" aria-hidden="true" style="margin-top: -25px; margin-right: 14px">×</button>
+          <h4><b>You must be logged in to upvote or downvote posts!</b></h4>
+          <a href="/login"><button type="button" class="btn" style="background-color: #00BFFF; color: White"><b>Login</b></button></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="/signup"><button type="button" class="btn" style="background-color: #32CD32; color: White"><b>Sign-up</b></button></a>
+          <br></br>
+        </div>
+      </div>
+    </div>
+
+    <!-- Must be logged in to answer modal -->
+    <div class="modal fade bs-example-modal-sm absolute-center" id = "notLoggedInAnswerVote" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content" style = "text-align: center">
+          <h6><i>Click outside to dismiss!</i></h6>
+          <button type="button" class="close pull-right" data-dismiss="modal" aria-hidden="true" style="margin-top: -25px; margin-right: 14px">×</button>
+          <h4><b>You must be logged in to answer question posts!</b></h4>
+          <a href="/login"><button type="button" class="btn" style="background-color: #00BFFF; color: White"><b>Login</b></button></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="/signup"><button type="button" class="btn" style="background-color: #32CD32; color: White"><b>Sign-up</b></button></a>
+          <br></br>
+        </div>
+      </div>
+    </div>
+
+    <!-- Must be logged in to ask modal -->
+    <div class="modal fade bs-example-modal-sm absolute-center" id = "notLoggedInAsk" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content" style = "text-align: center">
+          <h6><i>Click outside to dismiss!</i></h6>
+          <button type="button" class="close pull-right" data-dismiss="modal" aria-hidden="true" style="margin-top: -25px; margin-right: 14px">×</button>
+          <h4><b>You must be logged in to ask questions!</b></h4>
+          <a href="/login"><button type="button" class="btn" style="background-color: #00BFFF; color: White"><b>Login</b></button></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="/signup"><button type="button" class="btn" style="background-color: #32CD32; color: White"><b>Sign-up</b></button></a>
+          <br></br>
+        </div>
+      </div>
+    </div>
+
+    <% if (loggedIn) { %>
+    <!-- Answer Modal -->
+    <div class="modal fade bs-example-modal-sm absolute-center" id = "answerModal" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-sm" style="top: 75px">
+        <div class="modal-content" style = "text-align: center">
+          <div class="modal-header">
+            <h4><b>Answer Demographics Selection</b></h4>
+            <button type="button" class="close pull-right" data-dismiss="modal" aria-hidden="true" style="margin-top: -30px"><span class="glyphicon glyphicon-remove"></span></button>
+          </div>
+          <div class="modal-body" style="margin-bottom: -38px">
+            <h4>Select all demographic information you want to include!</h4>
+            <hr>
+            <div class="demographicsModal">
+              <% if (gender == "Unidentified" && age == "Unidentified" && education == "Unidentified" && income == "Unidentified") { %>
+                <h5><b>You don't have any demographic information filled out.<h6></h6>Visit your profile page at <a href="/profile/<%= username %>"><%= username %></a> to fill it out!</b><br><br></h5>
+              <% } else { %>
+                <% if (gender == "Unidentified" || age == "Unidentified" || education == "Unidentified" || income == "Unidentified") { %>
+                  <h5><b>You don't have some demographic information filled out.<h6></h6>Visit your profile page at <a href="/profile/<%= username %>"><%= username %></a> to fill it out!</b><br><br></h5>
+                <% } if (gender != "Unidentified") { %>
+                  <h4><label style="font-weight: normal">Include my gender &nbsp;&nbsp;<input type="checkbox" name="demographicGen"></label><h4>
+                <% } if (age != "Unidentified") { %>
+                  <h4><label style="font-weight: normal">Include my age &nbsp;&nbsp;<input type="checkbox" name="demographicAge"></label><h4>
+                <% } if (education != "Unidentified") { %>
+                  <h4><label style="font-weight: normal">Include my education level &nbsp;&nbsp;<input type="checkbox" name="demographicEdu"></label><h4>
+                <% } if (income != "Unidentified") { %>
+                  <h4><label style="font-weight: normal">Include my income category &nbsp;&nbsp;<input type="checkbox" name="demographicInc"></label><h4>
+                <% } %>
+              <% } %>
+              <!-- Popover content -->
+              <div id="popover_content_wrapper_loc" style="display: none">
+                <h5>We perform a simple geolocation based on your IP address and determine the closest city associated with your IP. The coordinates of that city are then added to the heatmap. <br> While your approximate location is good enough for visualization purposes on a large country/global scale, <b>the coordinates are by no means accurate enough to determine your exact location.</b> <br> <i>Zoom capabilities are also restricted.</i></h5>
+              </div>
+              <h4><label style="font-weight: normal">Include my location (only for heatmap) <span id="locHelp" class="glyphicon glyphicon-question-sign" data-html="true" data-original-title="" data-content="" rel="popover" data-placement="left" data-trigger="hover" style="cursor: pointer"></span>&nbsp;&nbsp;<input type="checkbox" name="demographicLoc"></label><h4>
+              <script>
+                // initialize education help popover
+                $('#locHelp').popover({ 
+                  html : true,
+                  content: function() { return $('#popover_content_wrapper_loc').html(); }
+                });
+              </script>
+            </div>
+            <h6><br>Only checked demographic information will be included with your answer vote submission, though you remain <i>anonymous</i> either way (no account association)!</h6>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="includeAll" class="btn pull-left" style="background-color: #00BFFF; color: White">Include All</button>
+            <button type="button" id="resetAll" class="btn btn-link pull-left"">Reset</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>&nbsp;&nbsp;&nbsp;<a style = "cursor: pointer"><button id="submitID" type="button" class="btn btn-primary submitAnswer" data-dismiss="modal"><b>Submit Answer Vote</b></button></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end Answer Modal -->
+    <% } %>
+
+    <style>
+      .popover-title {
+        background: black;
+        color: white;
+        }
+      .popover-content {
+        color: black;
+        }
+      .popover.left .arrow:after {
+        border-left-color: white;
+        }
+    </style>
+
+    <!-- Post content -->
+    <div class = "container">
+      <div>
+        <!-- Voting module -->
+        <div class = "span6" style = "display: inline-block; float: left">
+          <% if (upvoted) { %>
+            <div id = "upvote" data-toggle="tooltip" data-placement="right" data-original-title="Already upvoted!" style = "text-align: center"><a style = "" id = "upvotelink"><img src = "<%= staticDirPath %>images/glyphicons_213_up_arrow_orange.png" id = "upvoteimg"></img></a></div>
+          <% } else { %>
+            <div id = "upvote" data-toggle="tooltip" data-placement="right" data-original-title="" style = "text-align: center"><a style = "cursor: pointer" id = "upvotelink"><img src = "<%= staticDirPath %>images/glyphicons_free/glyphicons/png/glyphicons_213_up_arrow.png" id = "upvoteimg"></img></a></div>
+          <% } var approvalPercent = (upvotes/(upvotes+downvotes)*100).toFixed(2); %>
+          <!-- Popover content -->
+          <div id="popover_content_wrapper" style="display: none">
+            <b style="color: green" id="popoverUpvote"><%= upvotes %></b> upvotes
+            <h6></h6>
+            <b style="color: red" id="popoverDownvote"><%= downvotes %></b> downvotes
+          </div>
+          <!-- end Popover content -->
+          <div style = "text-align: center"><h4 style = "display: inline-block">&nbsp;</h4><h4 data-html="true" data-original-title="<b><%= approvalPercent %></b>% liked" data-content="" rel="popover" data-placement="right" data-trigger="hover" style = "display: inline" id = "score"><%= score %></h4><h4 style = "display: inline">&nbsp;</h4></div>
+          <% if (downvoted) { console.log('here'); %>
+            <div id = "downvote" data-toggle="tooltip" data-placement="right" data-original-title="Already downvoted!" style = "text-align: center"><h5 style = "display: inline;">&nbsp;&nbsp;</h5><a style = "" id = "downvotelink"><img src = "<%= staticDirPath %>images/glyphicons_212_down_arrow_orange.png" id = "downvoteimg"></img></a><h5 style = "display: inline;">&nbsp;&nbsp;</h5></div>
+          <% } else { %>
+             <div id = "downvote" data-toggle="tooltip" data-placement="right" data-original-title="" style = "text-align: center"><h5 style = "display: inline;">&nbsp;&nbsp;</h5><a style = "cursor: pointer" id = "downvotelink"><img src = "<%= staticDirPath %>images/glyphicons_free/glyphicons/png/glyphicons_212_down_arrow.png" id = "downvoteimg"></img></a><h5 style = "display: inline;">&nbsp;&nbsp;</h5></div>
+          <% } %>
+          <script>
+            // initialize upvote/downvote popover
+            $('#score').popover({ 
+              html : true,
+              content: function() { return $('#popover_content_wrapper').html(); }
+            });
+          </script>
+        </div>
+        <div>
+          <h4 class = "list-group-item-heading">&nbsp;<b>Q:</b> <%= question %> 
+          <% if (questionAnswered) { %>
+            <button id="alreadyAnswered" data-toggle="tooltip" data-placement="left" data-original-title="Already answered!" rel="popover" data-trigger="hover" type="button" class="btn pull-right" style="background-color: #477447; color: White">Answer</button>
+          <% } else { %>
+            <button id="answer" data-toggle="tooltip" data-placement="left" data-original-title="" type="button" class="btn btn-success pull-right">Answer</button>
+          <% } %>
+          </h4>
+          <h4>&nbsp;<i class="glyphicon glyphicon-arrow-right" style = "color: #00BFFF"></i>
+             <!-- Answer button group -->
+            <div class="btn-group" data-toggle="buttons">
+  	    <% for (j = 0; j < answerChoices.length; j++) { %>
+              <label id="answer<%= j+1 %>" class="btn answerChoice" style="background-color: <%= ansColors[j] %>; color: White">
+	        <input type="radio"><b><%= letters[j] %>.</b> <%= answerChoices[j] %></input>
+              </label>
+	    <% } %>
+            <label id="showAll" class="btn btn-primary active showAll">
+	      <input type="radio" style="background-color: Gray; color: White"><b>Show All</b></input>
+            </label>
+            </div>
+	  </h4>
+        </div>
+      </div>
+		
+      <% /*count num answer votes*/ var total=0; for (j=0;j<answerVotes.length;j++) total+=answerVotes[j]; %>
+		
+      <div class = "progress row-fluid">
+        <% for (j = 0; j < answerVotes.length; j++) { %>
+          <div id="progress<%= j+1 %>" class="progress-bar" style="width: <%= 100*answerVotes[j]/total %>%; background-color: <%= ansColors[j] %>">
+            <span id="progressContent<%= j+1 %>"><b><%= letters[j] %>.</b> <%= answerVotes[j] %> (<%= (100*answerVotes[j]/total).toFixed(2) %>%)</span>
+          </div>
+        <% } %>
+      </div>
+        
+      <!-- heatmap, demographics highchart, and radar chart containers -->
+
+      <div id = "radar-chart" class = "container pull-left" style = "width: 550px; height: 500px; margin-top: 0px; margin-right: -100px"></div>
+      <div class = "container">
+        <div id = "dem-chart" style="width: 620px; height: 300px; margin: 5; float: right"></div>
+        <div id = "map-canvas" style="width: 620px; height: 300px; float: right"></div>
+      </div>
+
+      <h5 style="margin-left: 189px; margin-top: -60px">Age</h5>
+      <h5 style="margin-left: 284px; margin-top: -25px">Education</h5>
+      <h5 style="margin-left: 413px; margin-top: -25px">Income</h5>
+      <br>
+
+      <button id="cycle" type="button" class="btn btn-default" style="margin-left: 40px; margin-top: -40px; background: Black; color: Orange"><span class="glyphicon glyphicon-off"></span> Cycle!&nbsp;</button>
+
+      <div class="dropdown" style="margin-left: 163px; margin-top: -46px">
+       <button id="ageDropdown" class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" style="width: 78px">
+         UI
+         <span class="caret"></span>
+       </button>
+       <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1" style="margin-top: -1px; border-radius: 0px">
+         <li role="presentation"><a id="ageMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">Unidentified</a></li>
+         <li role="presentation"><a id="ageMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">40+</a></li>
+         <li role="presentation"><a id="ageMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">35-39</a></li>
+         <li role="presentation"><a id="ageMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">30-34</a></li>
+         <li role="presentation"><a id="ageMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">26-29</a></li>
+         <li role="presentation"><a id="ageMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">22-25</a></li>
+         <li role="presentation"><a id="ageMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">19-21</a></li>
+         <li role="presentation"><a id="ageMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">15-18</a></li>
+         <li role="presentation"><a id="ageMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">13-14</a></li>
+       </ul>
+     </div>
+
+     <div class="dropdown" style="margin-left: 265px; margin-top: -34px">
+       <button id="eduDropdown" class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" style="width: 105px">
+         UI
+         <span class="caret"></span>
+       </button>
+       <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1" style="margin-top: -1px; border-radius: 0px">
+         <li role="presentation"><a id="eduMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">Unidentified</a></li>
+         <li role="presentation"><a id="eduMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">Postgraduate/Doctorate</a></li>
+         <li role="presentation"><a id="eduMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">Master Degree</a></li>
+         <li role="presentation"><a id="eduMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">Bachelor Degree (4 years college)</a></li>
+         <li role="presentation"><a id="eduMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">Associate Degree (2 years college)</a></li>
+         <li role="presentation"><a id="eduMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">High School (year 9-12)</a></li>
+         <li role="presentation"><a id="eduMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">Middle School (year 6-8)</a></li>
+       </ul>
+     </div>
+
+     <div class="dropdown" style="margin-left: 394px; margin-top: -34px">
+       <button id="incDropdown" class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" style="width: 91px">
+         UI
+         <span class="caret"></span>
+       </button>
+       <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1" style="margin-top: -1px; border-radius: 0px">
+         <li role="presentation"><a id="incMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">Unidentified</a></li>
+         <li role="presentation"><a id="incMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">Upper Class (+$150k annual, top 5%)</a></li>
+         <li role="presentation"><a id="incMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">Upper Middle Class Tier 2 (+$100k annual, top 33%)</a></li>
+         <li role="presentation"><a id="incMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">Upper Middle Class Tier 1 ($60,000-$100,000 annual)</a></li>
+         <li role="presentation"><a id="incMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">"Middle" Middle Class ($32,500-$60,000 annual)</a></li>
+         <li role="presentation"><a id="incMenuItem" role="menuitem" tabindex="-1" style="cursor: pointer">Lower Middle Class ($23,050-$32,500 annual)</a></li>
+       </ul>
+     </div>
+
+     <script>
+        /**
+          * Dark Unica (modified) theme for Highcharts JS
+          * @author Torstein Honsi
+          */
+
+        // Load the fonts
+        Highcharts.createElement('link', {
+          href: 'http://fonts.googleapis.com/css?family=Monda',
+          rel: 'stylesheet',
+          type: 'text/css'
+        }, null, document.getElementsByTagName('head')[0]);
+
+        Highcharts.theme = {
+          colors: ["#2b908f", "#90ee7e", "#f45b5b", "#7798BF", "#aaeeee", "#ff0066", "#eeaaee",
+            "#55BF3B", "#DF5353", "#7798BF", "#aaeeee"],
+          chart: {
+            style: {
+              fontFamily: "'Monda', sans-serif"
+            },
+            plotBorderColor: '#606063'
+          },
+          title: {
+            style: {
+              color: 'Black',
+              fontSize: '20px'
+            }
+          },
+          subtitle: {
+            style: {
+              color: '#E0E0E3',
+              textTransform: 'uppercase'
+            }
+          }
+        };
+
+        // Apply the theme
+        Highcharts.setOptions(Highcharts.theme);
+        /* End Dark Unica Theme */
+
+        // sets answer choice letters
+        <% var answerLetters = []; %>
+        <% for (var c = 0; c < answerVotes.length; c++) { %>
+          <% answerLetters.push(answerChoices[c]); } %>
+        
+        // sets answer/demographic correlation data
+        var ageData = [], eduData = [], incData = [];
+        for (var c = 0; c < answerVotes.length; c++) { // loops as many times as there are answer choices
+          if (ageUnidentified[answerVotes.length] == 0)
+            ageData.push(0);
+          else
+            ageData.push(100*(ageUnidentified[c]/ageUnidentified[answerVotes.length]).toFixed(2));
+          if (eduUnidentified[answerVotes.length] == 0)
+            eduData.push(0);
+          else
+            eduData.push(100*(eduUnidentified[c]/eduUnidentified[answerVotes.length]).toFixed(2));
+          if (incomeUnidentified[answerVotes.length] == 0)
+            incData.push(0);
+          else
+            incData.push(100*(incomeUnidentified[c]/incomeUnidentified[answerVotes.length]).toFixed(2));
+        }
+
+        $(function () {
+          $('#radar-chart').highcharts({
+            chart: {
+              polar: true,
+              type: 'area'
+            },
+            title: {
+              text: 'Demographic Distribution per Answer Choice',
+              y: 40
+            },
+            pane: {
+              size: '97%'
+            },
+            xAxis: {
+              categories: <%- JSON.stringify(answerLetters) %>,
+              tickmarkPlacement: 'on',
+              lineWidth: 0
+            },
+            yAxis: {
+              gridLineInterpolation: 'circle',
+              lineWidth: 5,
+              minorTickInterval: 10,
+              minorTickLength: 10,
+              min: 0,
+              max: 100
+            },
+            tooltip: {
+              shared: true,
+              pointFormat: '<span style="color:{series.color}">{series.name}: <b>{point.y:,.0f}%</b><br/>'
+            },
+            legend: {
+              align: 'top',
+              verticalAlign: 'top',
+              y: 70,
+              layout: 'vertical'
+            },
+            credits: {
+              enabled: false
+            },
+            series: [{
+              name: 'Age',
+              data: ageData,
+              pointPlacement: 'on'
+            }, {
+              name: 'Education',
+              data: eduData,
+              pointPlacement: 'on'
+            }, {
+              name: 'Income',
+              data: incData,
+              pointPlacement: 'on'
+            }]
+          });
+        });
+      </script>
+
+      <% var parsedQ = question.toLowerCase().replace(/\ /g, '-').replace(/\?/g, ''); %>
+
+      <br><br>
+      <a style="margin-left: 30px; margin-top: 20px"><%= numComments %> comments</a> - asked by <a href = "/profile/<%= postUser %>"><%= postUser %></a>
+      <% if (created < 60) { %>
+        <%= Math.floor(created) %> seconds ago
+      <% } else if (created < 3600) { %>
+        <%= Math.floor(created/60) %> minute(s) ago
+      <% } else if (created < 86400) { %>
+        <%= Math.floor(created/3600) %> hour(s) ago
+      <% } else if (created < 2.62974e6) { %>
+        <%= Math.floor(created/86400) %> day(s) ago
+      <% } else if (created < 3.15569e7) { %>
+        <%= Math.floor(created/2.62974e6) %> month(s) ago
+      <% } else { %>
+        <%= Math.floor(created/3.15569e7) %> year(s) ago
+      <% } %>
+      <h4 class="pull-right" style="margin-right: 330px">Sharing is caring!</h4>
+      <div style="margin-right: -490px; float: right">
+        <span st_url="poller.io/post/<%= shortId %>/<%= parsedQ %>" class='st_facebook_large' displayText='Facebook'></span>
+        <span st_url="poller.io/post/<%= shortId %>/<%= parsedQ %>" st_title="<%= question %> poller.io/post/<%= shortId %>/<%= parsedQ %>" class='st_twitter_large' displayText='Tweet'></span>
+        <span st_url="poller.io/post/<%= shortId %>/<%= parsedQ %>" class='st_googleplus_large' displayText='Google +'></span>
+        <span st_url="poller.io/post/<%= shortId %>/<%= parsedQ %>" class='st_reddit_large' displayText='Reddit'></span>
+        <span st_url="poller.io/post/<%= shortId %>/<%= parsedQ %>" class='st_linkedin_large' displayText='LinkedIn'></span>
+        <span st_url="poller.io/post/<%= shortId %>/<%= parsedQ %>" class='st_pinterest_large' displayText='Pinterest'></span>
+        <span st_url="poller.io/post/<%= shortId %>/<%= parsedQ %>" class='st_sharethis_large' displayText='ShareThis'></span>
+        <span st_url="poller.io/post/<%= shortId %>/<%= parsedQ %>" class='st_email_large' displayText='Email'></span>
+      </div>
+    </div>
+
+    <div class = "container">
+      <ul class="media-list">
+        <li class="media">
+          <a class="pull-left" href="#">
+            <div style = "width: 64px; height: 64px; background: Orange"></div>
+            <img class="media-object" src="<%= staticDirPath %>images/64x64.svg" alt=""> <!-- doesn't actually do anything yet -->
+          </a>
+          <div class="media-body">
+            <h4 class="media-heading"><a href="#" style="color: Black"><b>USERNAME1</b></a> </h4>
+            This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment.
+            <h6></h6>
+            <a style="cursor: pointer">Reply</a>&nbsp;&nbsp;&nbsp;
+            <b>123</b>&nbsp;&nbsp;&nbsp;
+            <a style="cursor: pointer; color: Green"><span class="glyphicon glyphicon-chevron-up"></span></a>
+            <a style="color: gray; text-decoration: none"><a style="cursor: pointer; color: Red"><span class="glyphicon glyphicon-chevron-down"></span></a>
+            <a style="color: gray; text-decoration: none"><% if (created < 60) { %>
+              <%= Math.floor(created) %> seconds ago
+            <% } else if (created < 3600) { %>
+              <%= Math.floor(created/60) %> minute(s) ago
+            <% } else if (created < 86400) { %>
+              <%= Math.floor(created/3600) %> hour(s) ago
+            <% } else if (created < 2.62974e6) { %>
+              <%= Math.floor(created/86400) %> day(s) ago
+            <% } else if (created < 3.15569e7) { %>
+              <%= Math.floor(created/2.62974e6) %> month(s) ago
+            <% } else { %>
+              <%= Math.floor(created/3.15569e7) %> year(s) ago
+            <% } %></a>
+            &nbsp;&nbsp;<a style="cursor: pointer; text-align: center">Expand</a>
+          </div>
+        </li>
+        <li class="media">
+          <a class="pull-left" href="#">
+            <div style = "width: 64px; height: 64px; background: Violet"></div>
+            <img class="media-object" src="<%= staticDirPath %>images/64x64.svg" alt=""> <!-- doesn't actually do anything yet -->
+          </a>
+          <div class="media-body">
+            <h4 class="media-heading"><a href="#" style="color: Black"><b>USERNAME5</b></a> </h4>
+            This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. This is a popular second comment. 
+            <h6></h6>
+            <a style="cursor: pointer">Reply</a>&nbsp;&nbsp;&nbsp;
+            <b>95</b>&nbsp;&nbsp;&nbsp;
+            <a style="cursor: pointer; color: Green"><span class="glyphicon glyphicon-chevron-up"></span></a>
+            <a style="cursor: pointer; color: Red"><span class="glyphicon glyphicon-chevron-down"></span></a>
+            <a style="color: gray; text-decoration: none"><% if (created < 60) { %>
+              <%= Math.floor(created) %> seconds ago
+            <% } else if (created < 3600) { %>
+              <%= Math.floor(created/60) %> minute(s) ago
+            <% } else if (created < 86400) { %>
+              <%= Math.floor(created/3600) %> hour(s) ago
+            <% } else if (created < 2.62974e6) { %>
+              <%= Math.floor(created/86400) %> day(s) ago
+            <% } else if (created < 3.15569e7) { %>
+              <%= Math.floor(created/2.62974e6) %> month(s) ago
+            <% } else { %>
+              <%= Math.floor(created/3.15569e7) %> year(s) ago
+            <% } %></a>
+            &nbsp;&nbsp;<a style="cursor: pointer; text-align: center">Expand</a>
+          </div>
+        </li>
+        <li class="media">
+          <a class="pull-left" href="#">
+            <div style = "width: 64px; height: 64px; background: Blue"></div>
+            <img class="media-object" src="<%= staticDirPath %>images/64x64.svg" alt=""> <!-- doesn't actually do anything yet -->
+          </a>
+          <div class="media-body">
+            <h4 class="media-heading"><a href="#" style="color: Black"><b>USERNAME2</b></a></h4>
+            This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. This is a test comment. 
+            <h6></h6>
+            <a style="cursor: pointer">Reply</a>&nbsp;&nbsp;&nbsp;
+            <b style="color: Gray">-7</b>&nbsp;&nbsp;&nbsp;
+            <a style="cursor: pointer; color: Green"><span class="glyphicon glyphicon-chevron-up"></span></a>
+            <a style="cursor: pointer; color: Red"><span class="glyphicon glyphicon-chevron-down"></span></a>
+            <a style="color: gray; text-decoration: none"><% if (created < 60) { %>
+              <%= Math.floor(created) %> seconds ago
+            <% } else if (created < 3600) { %>
+              <%= Math.floor(created/60) %> minute(s) ago
+            <% } else if (created < 86400) { %>
+              <%= Math.floor(created/3600) %> hour(s) ago
+            <% } else if (created < 2.62974e6) { %>
+              <%= Math.floor(created/86400) %> day(s) ago
+            <% } else if (created < 3.15569e7) { %>
+              <%= Math.floor(created/2.62974e6) %> month(s) ago
+            <% } else { %>
+              <%= Math.floor(created/3.15569e7) %> year(s) ago
+            <% } %></a>
+          </div>
+        </li>
+        <li class="media">
+          <a class="pull-left" href="#" style="margin-left: 72px">
+            <div style = "width: 64px; height: 64px; background: LimeGreen"></div>
+            <img class="media-object" src="<%= staticDirPath %>images/64x64.svg" alt=""> <!-- doesn't actually do anything yet -->
+          </a>
+          <div class="media-body">
+            <h4 class="media-heading"><a href="#" style="color: Black"><b>USERNAME3</b></a></h4>
+            This is a test REPLY comment.
+            <h6></h6>
+            <a style="cursor: pointer">Reply</a>&nbsp;&nbsp;&nbsp;
+            <b>34</b>&nbsp;&nbsp;&nbsp;
+            <a style="cursor: pointer; color: Green"><span class="glyphicon glyphicon-chevron-up"></span></a>
+            <a style="cursor: pointer; color: Red"><span class="glyphicon glyphicon-chevron-down"></span></a>
+            <a style="color: gray; text-decoration: none"><% if (created < 60) { %>
+              <%= Math.floor(created) %> seconds ago
+            <% } else if (created < 3600) { %>
+              <%= Math.floor(created/60) %> minute(s) ago
+            <% } else if (created < 86400) { %>
+              <%= Math.floor(created/3600) %> hour(s) ago
+            <% } else if (created < 2.62974e6) { %>
+              <%= Math.floor(created/86400) %> day(s) ago
+            <% } else if (created < 3.15569e7) { %>
+              <%= Math.floor(created/2.62974e6) %> month(s) ago
+            <% } else { %>
+              <%= Math.floor(created/3.15569e7) %> year(s) ago
+            <% } %></a>
+          </div>
+        </li>
+        <li class="media">
+          <a class="pull-left" href="#" style="margin-left: 144px">
+            <div style = "width: 64px; height: 64px; background: Crimson"></div>
+            <img class="media-object" src="<%= staticDirPath %>images/64x64.svg" alt=""> <!-- doesn't actually do anything yet -->
+          </a>
+          <div class="media-body">
+            <h4 class="media-heading"><a href="#" style="color: Black"><b>USERNAME4</b></a></h4>
+            This is a test nested REPLY comment.
+            <h6></h6>
+            <a style="cursor: pointer">Reply</a>&nbsp;&nbsp;&nbsp;
+            <b>18</b>&nbsp;&nbsp;&nbsp;
+            <a style="cursor: pointer; color: Green"><span class="glyphicon glyphicon-chevron-up"></span></a>
+            <a style="cursor: pointer; color: Red"><span class="glyphicon glyphicon-chevron-down"></span></a>
+            <a style="color: gray; text-decoration: none"><% if (created < 60) { %>
+              <%= Math.floor(created) %> seconds ago
+            <% } else if (created < 3600) { %>
+              <%= Math.floor(created/60) %> minute(s) ago
+            <% } else if (created < 86400) { %>
+              <%= Math.floor(created/3600) %> hour(s) ago
+            <% } else if (created < 2.62974e6) { %>
+              <%= Math.floor(created/86400) %> day(s) ago
+            <% } else if (created < 3.15569e7) { %>
+              <%= Math.floor(created/2.62974e6) %> month(s) ago
+            <% } else { %>
+              <%= Math.floor(created/3.15569e7) %> year(s) ago
+            <% } %></a>
+            &nbsp;&nbsp;<a style="cursor: pointer; text-align: center">Expand</a>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <div class = "navbar navbar-default navbar-static-bottom">
+      <div class = "container">
+        <p class = "navbar-text">Poller</p>
+      </div>
+    </div>
+
+  </body>
+
+</html>

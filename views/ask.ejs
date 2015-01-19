@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+
+<!-- ask.ejs is the general ask page on Poller for question post generation. User must be logged in to use this feature. -->
+
+<html>
+
+  <head>
+    <title>Ask <%= community %> - Poller</title>
+    <meta name="description" content="Poller is a real-time data visualization platform based off of a Reddit-style bulletin board. Users ask the questions they want to see answered and the community votes and answers the best question posts from the community.">
+    <meta name = "viewport" content = "width=device-width, initial-scale=1.0">
+    <!-- Creates custom parent directory redirect string -->
+    <% var staticDirPath = "" %>
+    <% for (z = 0; z < url.split("/").length - 1; z++) { staticDirPath += "../"; } %>
+    <link href='http://fonts.googleapis.com/css?family=Monda' rel='stylesheet' type='text/css'>
+    <link href = "<%= staticDirPath %>stylesheets/css/bootstrap.css" rel = "stylesheet"> <!--change back to bootstrap.min-->
+    <script src = "http://code.jquery.com/jquery-1.10.2.min.js"></script>
+    <script src = "<%= staticDirPath %>socket.io.js"></script>
+    <script src = "<%= staticDirPath %>javascripts/client/clientAsk.js"></script>
+    <script src = "<%= staticDirPath %>javascripts/js/bootstrap.js"></script>
+
+    <script> 
+      var counter = 2;
+      function addInput(){
+        counter++;
+        var newdiv = document.createElement('div');
+        newdiv.innerHTML = "<label for='inputAnswer" + counter + "'>Answer " + counter + "</label> <input id='inputAnswer" + counter + "' class='form-control' name='inputAnswer" + counter + "' placeholder='Enter your answer'>"
+        newdiv.id = "answer" + counter;
+        newdiv.style.marginBottom = "5px";
+        newdiv.className = "form-group";
+        document.getElementById('formid').insertBefore(newdiv,document.getElementById('addAns'));
+        if (counter >= 8) {
+          document.getElementById('formid').removeChild(document.getElementById('addAns'));
+        }
+      }
+    </script>
+
+    <meta charset="utf-8">
+  </head>
+
+  <body>
+    
+    <!-- Navigation Bar -->
+    <div class = "navbar navbar-default navbar-static-top" role = "navigation">
+      <div class = "container">
+        <div class="navbar-inner">
+          <a href = "/" class = "navbar-brand"><img src="<%= staticDirPath %>images/rsz_poller_logo_temp.png" style="margin-top: -12px; margin-bottom: -15px" align="left"></img></a>
+        </div>
+        <button class = "navbar-toggle" data-toggle = "collapse" data-target = ".navHeaderCollapse">
+          <span class = "icon-bar"></span> <span class = "icon-bar"></span> <span class = "icon-bar"></span>
+        </button>
+				
+	<div class = "collapse navbar-collapse navHeaderCollapse">
+	  <ul class = "nav nav-tabs navbar-nav navbar-left">
+            <li><a href = "/c/<%= community %>/">Hot</a></li>
+	    <li><a href = "/c/<%= community %>/new">New</a></li>
+	    <li><a href = "/c/<%= community %>/top">Top</a></li>
+            <li class = "dropdown">
+              <a href = "#" class = "dropdown-toggle" data-toggle = "dropdown">Communities <b class = "caret"></b></a>
+              <ul class = "dropdown-menu">
+                <li>
+                  <a href = "/">Main</a>
+                  <% for (c = 0; c < communityList.length; c++) { %>
+                    <a href = "/c/<%= communityList[c] %>"><%= communityList[c] %></a>
+                  <% } %>
+                  <a href = "#">See more...</a>
+                  <a href = "#">Create community</a>
+                </li>
+              </ul>
+            </li>
+            <li><a href = "/about">About</a></li>
+	  </ul>
+
+          <ul class = "nav navbar-nav">
+	    <p class="navbar-text"><b style="color: #241abf"><%= community %></b> <b style="color: Black">Community</b></p>
+	  </ul>
+
+	  <div class = "col-sm-3 col-md-2 navbar-right">
+	    <form class="navbar-form navbar-right" role = "search" name = "srch-term" id = "srch-term">
+	      <div class = "input-group">
+	        <input type = "text" class = "form-control" placeholder = "Search">
+	        <div class="input-group-btn">
+	          <button class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>
+	        </div>
+	      </div>
+	    </form>
+	  </div>
+          
+          <% if (!loggedIn) { %>
+	    <ul class = "nav navbar-nav navbar-right">
+	      <a href="/login"><button type="button" class="btn btn-default navbar-btn">Login</button></a>
+            </ul>
+          <% } else { %>
+            <ul class = "nav navbar-nav navbar-right">
+	      <a href="/logout"><button type="button" class="btn btn-default navbar-btn" style="margin-right: -15px">Logout</button></a>
+            </ul>
+            <ul class = "nav navbar-nav navbar-right">
+              <p class="navbar-text">Welcome <a href="/profile/<%= username %>"><b><%= username %></b></a>!&nbsp;&nbsp;&nbsp;</p>
+            </ul>
+          <% } %>
+
+        </div>
+      </div>
+    </div>
+        
+    <!-- Input Questions -->
+    <div id="containerid" class = "container">
+            
+      <h2><b>Ask a question to the <%= community %> community! (create question post)</b><br></br></h2>
+      <form id="formid" role="form" method="post">
+        <div class="form-group">
+          <label for="inputQuestion">Question</label>
+          <h6 style="margin-top: -2px; color: gray">Your question should allow for 2-8 answer responses which you will provide. </h6>
+          <input id="inputQuestion" type="question" class="form-control" name="inputQuestion" placeholder="Enter your question">
+        </div>
+        
+        <div id="answer1" class="form-group" style="margin-bottom: 5px">
+          <label for="inputAnswer1">Answer 1</label>
+          <input id="inputAnswer1" class="form-control" name="inputAnswer1" placeholder="Enter your answer">
+        </div>
+
+        <div id="answer2" class="form-group" style="margin-bottom: 5px">
+          <label for="inputAnswer2">Answer 2</label>
+          <input id="inputAnswer2" class="form-control" name="inputAnswer2" placeholder="Enter your answer">
+        </div>
+
+        <button id="addAns" type="button" class="btn btn-sm btn-info" onClick="addInput();" style="margin-top: 20px; margin-bottom: 20px">Add answer +</button>
+        <br>
+        <button id="submit" type="button" class="btn btn-success" style="margin-bottom: 20px">Ask question!</button>
+      </form>
+    
+    </div>
+    
+    <!-- Footer -->
+    <div class = "navbar navbar-default navbar-static-bottom">
+      <div class = "container">
+        <p class = "navbar-text">Poller</p>
+      </div>
+    </div>
+        
+  </body>
+</html>
